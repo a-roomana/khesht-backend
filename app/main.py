@@ -4,7 +4,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from app.helper.redis_helper import redis_manager
-from app.services.chat_service import get_suggestion_places
+from app.services.chat_service import get_suggestion_places_from_db
 
 from .schema import UserPromptRequest, UserPromptResponse
 
@@ -36,10 +36,11 @@ app = FastAPI(
 
 
 @app.post("/user-prompt")
-async def user_prompt(user_prompt: UserPromptRequest) -> UserPromptResponse:
+async def user_prompt(user_prompt: UserPromptRequest):
     """User prompt endpoint"""
-    places, session_id = await  get_suggestion_places(user_prompt.prompt, user_prompt.session_id)
-    return UserPromptResponse(places=places, session_id=session_id)
+    places, session_id, content = await  get_suggestion_places_from_db(user_prompt.prompt, user_prompt.session_id)
+    return {"tool_response": places, "session_id": session_id, "assistant_response": content}
+    # return UserPromptResponse(places=places, session_id=session_id)
 
 
 

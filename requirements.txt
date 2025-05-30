@@ -4,6 +4,9 @@ pydantic==2.5.0
 ruff==0.1.7
 openai==1.82.0
 python-dotenv==1.0.0
+redis
+chromadb
+
 # Testing dependencies
 pytest==7.4.3
 httpx==0.25.2 

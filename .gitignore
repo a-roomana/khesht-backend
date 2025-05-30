@@ -166,3 +166,4 @@ cython_debug/
 *.db
 *.sqlite
 .DS_Store 
+chroma_db/*

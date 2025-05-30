@@ -31,6 +31,7 @@ class OpenAIService:
 
     def __init__(self, api_key: str):
         self.client = OpenAI(api_key=api_key)
+        self.model = 'gpt-4o-mini'
 
     def create_message(self, role: OpendAIRole, content: str) -> OpenAIMessage:
         """Create a structured message"""
@@ -41,7 +42,10 @@ class OpenAIService:
         return [{"role": msg.role.value, "content": msg.content} for msg in messages]
 
     async def send_chat_completion(
-        self, messages: list[OpenAIMessage], response_format: T, tools: list[dict]=None
+        self,
+        messages: list[OpenAIMessage],
+        response_format: T,
+        tools: list[dict] = None,
     ) -> T:
         """Send structured chat completion request to OpenAI"""
         try:
@@ -50,13 +54,28 @@ class OpenAIService:
 
             # Send request to OpenAI
             response = self.client.responses.parse(
-                model="gpt-4o",
+                model=self.model,
                 input=message_dicts,
                 text_format=response_format,
-                tools=tools,
             )
             return response.output_parsed
-        
+
+        except Exception as e:
+            raise Exception(f"OpenAI API error: {e}")
+
+    def chat_completions_create(
+        self, messages: list[OpenAIMessage], tools: list[dict] = None
+    ):
+        """Send chat completion request to OpenAI"""
+        message_dicts = self.messages_to_dict(messages)
+        try:
+            return self.client.chat.completions.create(
+                model=self.model,
+                messages=message_dicts,
+                tools=tools,
+                tool_choice="auto",
+                temperature=0.0,
+            )
         except Exception as e:
             raise Exception(f"OpenAI API error: {e}")
 

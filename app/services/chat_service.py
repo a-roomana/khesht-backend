@@ -1,8 +1,10 @@
+import json
 import uuid
 
 from pydantic import BaseModel
 
 from app.helper.openai_helper import openapi_service
+from app.helper.chromadb_helper import chroma_db_service
 from app.schema import Place
 from app.services.chat_manager import chat_manager
 
@@ -11,7 +13,9 @@ class SuggestionPlaces(BaseModel):
     places: list[Place]
 
 
-async def get_suggestion_places(prompt: str, session_id: str = "") -> tuple[list[Place], str]:
+async def get_suggestion_places(
+    prompt: str, session_id: str = ""
+) -> tuple[list[Place], str]:
     if not session_id:
         session_id = str(uuid.uuid4())
 
@@ -53,16 +57,87 @@ You are a travel assistant specialized in Iran. Recommend only real, verified, a
 
 Only include listings from approved sources that can be **actually reserved** online. Do not include any result unless the final page has a working **checkout/reservation button**.
 """
-)
+    )
     user_message = openapi_service.create_user_message(prompt)
     messages = [system_message] + previous_messages + [user_message]
-    response = await openapi_service.send_chat_completion(messages, SuggestionPlaces, tools=[{
-        "type": "web_search_preview",
-        "search_context_size": "low",
-    }])
+    response = await openapi_service.send_chat_completion(
+        messages,
+        SuggestionPlaces,
+        tools=[
+            {
+                "type": "web_search_preview",
+                "search_context_size": "low",
+            }
+        ],
+    )
     places = response.places
-    assistant_message = openapi_service.create_assistant_message(f"suggestions places: {places}")
+    assistant_message = openapi_service.create_assistant_message(
+        f"suggestions places: {places}"
+    )
     await chat_manager.save_session_messages(
         session_id, previous_messages + [assistant_message]
     )
     return places, session_id
+
+
+async def get_suggestion_places_from_db(
+    prompt: str, session_id: str = ""
+) -> tuple[list[Place], str]:
+    if not session_id:
+        session_id = str(uuid.uuid4())
+
+    previous_messages = await chat_manager.get_session_messages(session_id)
+    system_message = openapi_service.create_system_message("""
+You are a helpful assistant that helps users find lodges and villas and plan for their trip in Iran (persian language).
+You have access to the following tools:
+- query_similar_rooms: Search for lodges and villas based on user preferences
+""")
+    user_message = openapi_service.create_user_message(prompt)
+    messages = [system_message] + previous_messages + [user_message]
+    response = openapi_service.chat_completions_create(
+        messages,
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "query_similar_rooms",
+                    "description": "Search for lodges and villas based on user preferences",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The search query describing the desired accommodation",
+                            }
+                        },
+                        "required": ["query"],
+                    },
+                },
+            }
+        ],
+    ).choices[0].message
+
+    places = []
+    if response.tool_calls:
+        tool_call = response.tool_calls[0]
+        tool_name = tool_call.function.name
+        tool_args = tool_call.function.arguments
+        if tool_name == "query_similar_rooms":
+            query = json.loads(tool_args)["query"]
+            print(f"query: {query}")
+            places = chroma_db_service.query_similar_rooms(query)
+
+            assistant_message = openapi_service.create_assistant_message(
+                f"query: {query} \nsuggestions places: {places}"
+            )
+        await chat_manager.save_session_messages(
+            session_id, previous_messages + [assistant_message]
+        )
+    else:
+        assistant_message = openapi_service.create_assistant_message(
+            f"{response.content}"
+        )
+        await chat_manager.save_session_messages(
+            session_id, previous_messages + [assistant_message]
+        )
+    return places, session_id, response.content
