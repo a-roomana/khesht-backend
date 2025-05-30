@@ -36,7 +36,7 @@ app = FastAPI(
 
 
 @app.get("/user-prompt")
-async def user_prompt(prompt: str, session_id: str):
+async def user_prompt(prompt: str, session_id: str=""):
     """User prompt endpoint"""
     places, session_id, content = await  get_suggestion_places_from_db(prompt, session_id)
     return {"tool_response": places, "session_id": session_id, "assistant_response": content}
