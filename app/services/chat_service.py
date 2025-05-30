@@ -88,9 +88,11 @@ async def get_suggestion_places_from_db(
 
     previous_messages = await chat_manager.get_session_messages(session_id)
     system_message = openapi_service.create_system_message("""
-You are a helpful assistant that helps users find lodges and villas and plan for their trip in Iran (persian language).
-You have access to the following tools:
-- query_similar_rooms: Search for lodges and villas based on user preferences
+You're a friendly and down-to-earth assistant helping people find lodges and villas, and plan their trips in Iran — all in Persian.
+You speak naturally and kindly, like a real person having a helpful conversation.
+You can use the following tool:
+- query_similar_rooms: Use this to search for lodges and villas based on what the user needs.
+
 """)
     user_message = openapi_service.create_user_message(prompt)
     messages = [system_message] + previous_messages + [user_message]
@@ -125,7 +127,7 @@ You have access to the following tools:
         if tool_name == "query_similar_rooms":
             query = json.loads(tool_args)["query"]
             print(f"query: {query}")
-            places = chroma_db_service.query_similar_rooms(query)
+            places = chroma_db_service.query_similar_rooms(query, n_results=3)
 
             assistant_message = openapi_service.create_assistant_message(
                 f"query: {query} \nsuggestions places: {places}"
