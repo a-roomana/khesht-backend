@@ -9,9 +9,6 @@ from app.helper.redis_helper import redis_manager
 from app.services.chat_service import get_suggestion_places_from_db
 from app.settings import (
     ALLOW_ALL_ORIGINS,
-    CORS_ALLOW_CREDENTIALS,
-    CORS_ALLOW_HEADERS,
-    CORS_ALLOW_METHODS,
     CORS_ORIGINS,
     ENVIRONMENT,
     HOST,
@@ -44,26 +41,13 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
-
-# Configure CORS based on environment and settings
-if ALLOW_ALL_ORIGINS:
-    # Development/permissive configuration
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-else:
-    # Production configuration with specific origins
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=CORS_ORIGINS,
-        allow_credentials=CORS_ALLOW_CREDENTIALS,
-        allow_methods=CORS_ALLOW_METHODS,
-        allow_headers=CORS_ALLOW_HEADERS,
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
